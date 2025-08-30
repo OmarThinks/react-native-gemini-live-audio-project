@@ -1,10 +1,10 @@
-import { combineBase64ArrayList } from "@/hooks/ai/useOpenAiRealTimeHook";
 import { useBase64PcmAudioPlayer } from "@/hooks/audio/useBase64PcmAudioPlayer";
 import React, { useCallback, useState } from "react";
 import { Button, View } from "react-native";
 import { AudioBuffer } from "react-native-audio-api";
 import { convertAudioBufferToBase64 } from ".";
 import { useAudioStreamer } from "@/hooks/audio/useAudioStreamer";
+import { combineBase64ArrayList } from ".";
 
 const RecordingTest = () => {
   const [base64Strings, setBase64Strings] = useState<string[]>([]);

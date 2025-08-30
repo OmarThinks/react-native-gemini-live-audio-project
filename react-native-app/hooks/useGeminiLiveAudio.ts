@@ -72,43 +72,75 @@ const useGeminiLiveAudio = ({
         ws.addEventListener("message", async (event) => {
           //console.log("WebSocket message:", event.data);
           // convert message to an object
-          const text = await event.data.text();
-          const message: LiveServerMessage = JSON.parse(text);
-          console.log("WebSocket message received:", message);
 
-          onMessageReceived(message);
+          try {
+            let text = "";
+            let message: LiveServerMessage;
 
-          if (message.setupComplete) {
-            setIsInitialized(true);
-            onReadyToReceiveAudio();
-          }
-          const parts = message?.serverContent?.modelTurn?.parts;
+            if (typeof event.data === "string") {
+              text = event.data;
+              // Text message (React Native default for text)
+              // console.log("WebSocket message text:", event.data);
+            } else if (event.data instanceof ArrayBuffer) {
+              // Binary message
+              text = new TextDecoder().decode(event.data);
+              //console.log("WebSocket binary as text:", text);
+            } else if (event.data instanceof Blob) {
+              // Browser Blob case
+              text = await event.data.text();
+              //console.log("WebSocket blob text:", text);
+            } else {
+              console.warn(
+                "Unknown WebSocket message type:",
+                typeof event.data
+              );
+              return; // Early return for unknown types
+            }
 
-          if (parts) {
-            for (const part of parts) {
-              const audioChunk = part?.inlineData?.data;
-              if (audioChunk) {
-                responseQueueRef.current.push(audioChunk);
+            if (!text.trim()) {
+              console.warn("Received empty message");
+              return;
+            }
+
+            message = JSON.parse(text);
+
+            //const message: LiveServerMessage = JSON.parse(text);
+            console.log("WebSocket message received:", message);
+
+            onMessageReceived(message);
+
+            if (message.setupComplete) {
+              setIsInitialized(true);
+              onReadyToReceiveAudio();
+            }
+            const parts = message?.serverContent?.modelTurn?.parts;
+
+            if (parts) {
+              for (const part of parts) {
+                const audioChunk = part?.inlineData?.data;
+                if (audioChunk) {
+                  responseQueueRef.current.push(audioChunk);
+                }
               }
             }
-          }
 
-          if (message?.serverContent) {
-            setIsAiResponseInProgress(true);
-          }
+            if (message?.serverContent) {
+              setIsAiResponseInProgress(true);
+            }
 
-          if (message?.serverContent?.generationComplete) {
-            setIsAiResponseInProgress(false);
-            const combinedBase64 = combineBase64ArrayList(
-              responseQueueRef.current
-            );
-            responseQueueRef.current = [];
-            onAudioResponseComplete(combinedBase64);
-          }
+            if (message?.serverContent?.generationComplete) {
+              setIsAiResponseInProgress(false);
+              const combinedBase64 = combineBase64ArrayList(
+                responseQueueRef.current
+              );
+              responseQueueRef.current = [];
+              onAudioResponseComplete(combinedBase64);
+            }
 
-          if (message?.usageMetadata) {
-            onUsageReport(message.usageMetadata);
-          }
+            if (message?.usageMetadata) {
+              onUsageReport(message.usageMetadata);
+            }
+          } catch {}
         });
 
         webSocketRef.current = ws;

@@ -108,7 +108,7 @@ const New = () => {
   );
 
   const { isStreaming, startStreaming, stopStreaming } = useAudioStreamer({
-    sampleRate: 24000, // e.g., 16kHz - // TODO : The documentation doesn't specify the exact requirements for this. It tried 16K and 24K. I think 16k is better.
+    sampleRate: 16000, // e.g., 16kHz - // TODO : The documentation doesn't specify the exact requirements for this. It tried 16K and 24K. I think 16k is better.
     interval: 250, // emit every 250 milliseconds
     onAudioReady: onAudioStreamerChunk,
   });
@@ -120,8 +120,12 @@ const New = () => {
 
   const _connectWebSocket = useCallback(async () => {
     const tokenResponse = await fetch(`${localIpAddress}:3000/session`);
+    console.log(tokenResponse);
     const data = await tokenResponse.json();
-    const EPHEMERAL_KEY = data.client_secret.value;
+    console.log(data);
+
+    const EPHEMERAL_KEY = data.token.name;
+    console.log(EPHEMERAL_KEY);
     connectWebSocket({ ephemeralKey: EPHEMERAL_KEY });
   }, [connectWebSocket]);
 
