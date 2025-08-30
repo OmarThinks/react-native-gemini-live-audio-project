@@ -3,8 +3,8 @@ import { dummyMessages } from "@/samples/dummyMessages";
 import { useAudioBufferQueue } from "@/hooks/audio/useAudioBufferQueue";
 import { AudioContext } from "react-native-audio-api";
 import { dummyAudioChunks } from "@/samples/dummyAudioChuncks";
-import { combineBase64ArrayList } from "@/hooks/ai/useOpenAiRealTimeHook";
 import { useBase64PcmAudioPlayer } from "@/hooks/audio/useBase64PcmAudioPlayer";
+import { combineBase64ArrayList } from ".";
 
 export default function TabTwoScreen() {
   const {
@@ -14,7 +14,10 @@ export default function TabTwoScreen() {
     stopPlayingAudio,
   } = useAudioBufferQueue({ sampleRate: 24000 });
 
-  const { playPcmBase64Audio } = useBase64PcmAudioPlayer({ sampleRate: 24000 });
+  const { playPcmBase64Audio } = useBase64PcmAudioPlayer({
+    sampleRate: 24000,
+    coolingDuration: 0,
+  });
 
   return (
     <View className=" self-stretch flex-1 justify-center items-stretch">

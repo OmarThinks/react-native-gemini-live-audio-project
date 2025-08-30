@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type LiveServerMessage,
+  type LiveClientMessage,
+  type UsageMetadata,
+} from "@google/genai";
 import { Buffer } from "buffer";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-const useOpenAiRealTime = ({
-  instructions,
+const useGeminiLiveAudio = ({
   onMessageReceived,
   onAudioResponseComplete,
   onUsageReport,
@@ -10,10 +14,9 @@ const useOpenAiRealTime = ({
   onSocketClose,
   onSocketError,
 }: {
-  instructions: string;
-  onMessageReceived: (message: object) => void;
+  onMessageReceived: (message: LiveServerMessage) => void;
   onAudioResponseComplete: (base64Audio: string) => void;
-  onUsageReport: (usage: object) => void;
+  onUsageReport: (usage: UsageMetadata) => void;
   onReadyToReceiveAudio: () => void;
   onSocketClose: (closeEvent: CloseEvent) => void;
   onSocketError?: (error: Event) => void;
@@ -23,7 +26,6 @@ const useOpenAiRealTime = ({
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAiResponseInProgress, setIsAiResponseInProgress] = useState(false);
-  const [transcription, setTranscription] = useState<string>("");
   const responseQueueRef = useRef<string[]>([]);
 
   const resetHookState = useCallback(() => {
@@ -33,7 +35,6 @@ const useOpenAiRealTime = ({
     setIsInitialized(false);
     responseQueueRef.current = [];
     setIsAiResponseInProgress(false);
-    setTranscription("");
   }, []);
 
   const connectWebSocket = useCallback(
@@ -44,15 +45,13 @@ const useOpenAiRealTime = ({
       }
 
       try {
-        const url = `wss://api.openai.com/v1/realtime?model=gpt-realtime&token=${ephemeralKey}`;
+        const urlParams = new URLSearchParams();
 
-        console.log("url", url);
+        urlParams.append("access_token", ephemeralKey);
 
-        const ws = new WebSocket(url, [
-          "realtime",
-          "openai-insecure-api-key." + ephemeralKey,
-          "openai-beta.realtime-v1",
-        ]);
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained?${urlParams.toString()}`;
+
+        const ws = new WebSocket(url);
 
         ws.addEventListener("open", () => {
           console.log("Connected to server.");
@@ -60,7 +59,6 @@ const useOpenAiRealTime = ({
         });
 
         ws.addEventListener("close", (closeEvent) => {
-          console.log("Disconnected from server.");
           setIsWebSocketConnected(false);
           resetHookState();
           onSocketClose(closeEvent);
@@ -71,17 +69,35 @@ const useOpenAiRealTime = ({
           onSocketError?.(error);
         });
 
-        ws.addEventListener("message", (event) => {
+        ws.addEventListener("message", async (event) => {
           //console.log("WebSocket message:", event.data);
           // convert message to an object
+          const text = await event.data.text();
+          const message: LiveServerMessage = JSON.parse(text);
+          console.log("WebSocket message received:", message);
 
-          const messageObject = JSON.parse(event.data);
-          onMessageReceived(messageObject);
-          if (messageObject.type === "response.created") {
-            setIsAiResponseInProgress(true);
-            setTranscription("");
+          onMessageReceived(message);
+
+          if (message.setupComplete) {
+            setIsInitialized(true);
+            onReadyToReceiveAudio();
           }
-          if (messageObject.type === "response.audio.done") {
+          const parts = message?.serverContent?.modelTurn?.parts;
+
+          if (parts) {
+            for (const part of parts) {
+              const audioChunk = part?.inlineData?.data;
+              if (audioChunk) {
+                responseQueueRef.current.push(audioChunk);
+              }
+            }
+          }
+
+          if (message?.serverContent) {
+            setIsAiResponseInProgress(true);
+          }
+
+          if (message?.serverContent?.generationComplete) {
             setIsAiResponseInProgress(false);
             const combinedBase64 = combineBase64ArrayList(
               responseQueueRef.current
@@ -89,21 +105,9 @@ const useOpenAiRealTime = ({
             responseQueueRef.current = [];
             onAudioResponseComplete(combinedBase64);
           }
-          if (messageObject.type === "response.audio.delta") {
-            const audioChunk = messageObject.delta;
-            if (audioChunk) {
-              responseQueueRef.current.push(audioChunk);
-            }
-          }
-          if (messageObject?.response?.usage) {
-            onUsageReport(messageObject.response.usage);
-          }
-          if (messageObject.type === "session.updated") {
-            setIsInitialized(true);
-            onReadyToReceiveAudio();
-          }
-          if (messageObject.type === "response.audio_transcript.delta") {
-            setTranscription((prev) => prev + messageObject.delta);
+
+          if (message?.usageMetadata) {
+            onUsageReport(message.usageMetadata);
           }
         });
 
@@ -133,6 +137,7 @@ const useOpenAiRealTime = ({
 
   useEffect(() => {
     return () => {
+      console.log("-------------------- I'm disconnecting");
       disconnectSocket();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,18 +145,17 @@ const useOpenAiRealTime = ({
 
   useEffect(() => {
     if (isWebSocketConnected) {
-      const event = {
-        type: "session.update",
-        session: {
-          instructions,
-        },
+      console.log("sending server config message", webSocketRef.current);
+      const message: LiveClientMessage = {
+        setup: {},
       };
-      webSocketRef.current?.send(JSON.stringify(event));
+
+      webSocketRef.current?.send(JSON.stringify(message));
     }
-  }, [instructions, isWebSocketConnected]);
+  }, [isWebSocketConnected]);
 
   const sendMessage = useCallback(
-    (messageObject: { [key: string]: any }) => {
+    (messageObject: LiveClientMessage) => {
       if (
         webSocketRef.current &&
         webSocketRef.current.readyState === WebSocket.OPEN &&
@@ -166,11 +170,20 @@ const useOpenAiRealTime = ({
 
   const sendBase64AudioStringChunk = useCallback(
     (base64String: string) => {
+      //console.log("Should send message");
       if (webSocketRef.current) {
-        sendMessage({
-          type: "input_audio_buffer.append",
-          audio: base64String,
-        });
+        //console.log("Should send message");
+
+        const messageToSend: LiveClientMessage = {
+          realtimeInput: {
+            audio: {
+              data: base64String,
+              mimeType: "audio/pcm;rate=16000",
+            },
+          },
+        };
+
+        sendMessage(messageToSend);
       }
     },
     [sendMessage]
@@ -184,7 +197,6 @@ const useOpenAiRealTime = ({
     sendBase64AudioStringChunk,
     isInitialized,
     isAiResponseInProgress,
-    transcription,
   };
 };
 
@@ -220,4 +232,4 @@ const combineBase64ArrayList = (base64Array: string[]): string => {
   return combinedBase64;
 };
 
-export { useOpenAiRealTime, combineBase64ArrayList };
+export { combineBase64ArrayList, useGeminiLiveAudio };

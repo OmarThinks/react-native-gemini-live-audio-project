@@ -1,7 +1,3 @@
-import {
-  combineBase64ArrayList,
-  useOpenAiRealTime,
-} from "@/hooks/ai/useOpenAiRealTimeHook";
 import { dummyBase64Audio24K } from "@/samples/dummyBase64Audio";
 import { requestRecordingPermissionsAsync } from "expo-audio";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -13,6 +9,10 @@ import {
   AudioRecorder,
 } from "react-native-audio-api";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  combineBase64ArrayList,
+  useGeminiLiveAudio,
+} from "@/hooks/useGeminiLiveAudio";
 
 // TODO: Replace with your internal ip address
 const localIpAddress = "http://192.168.8.103";
@@ -71,9 +71,7 @@ const New = () => {
     sendBase64AudioStringChunk,
     isAiResponseInProgress,
     isInitialized,
-    transcription,
-  } = useOpenAiRealTime({
-    instructions: "You are a helpful assistant.",
+  } = useGeminiLiveAudio({
     onMessageReceived: enqueueMessage,
     onAudioResponseComplete,
     onUsageReport,
@@ -190,20 +188,6 @@ const New = () => {
               title="Log Messages"
             />
           </View>
-          <HR />
-
-          <View>
-            <Text
-              style={{ color: "white", fontSize: 32 }}
-              className=" text-[30px] font-bold"
-            >
-              Transcription:
-            </Text>
-            <Text style={{ color: "white", fontSize: 32 }}>
-              {transcription}
-            </Text>
-          </View>
-
           <HR />
 
           <View className=" flex-row flex items-center">
