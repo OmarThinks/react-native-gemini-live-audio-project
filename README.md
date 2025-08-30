@@ -1,6 +1,6 @@
 # react-native-gemini-live-audio-project
 
-TouTube: TODO
+TouTube: https://www.youtube.com/watch?v=DT9LeR5wvhM
 
 <img src="./media/Screenshot.png" width=400/>
 
