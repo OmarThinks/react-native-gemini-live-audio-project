@@ -124,7 +124,7 @@ const useGeminiLiveAudio = ({
               }
             }
 
-            if (message?.serverContent) {
+            if (message?.serverContent?.modelTurn) {
               setIsAiResponseInProgress(true);
             }
 
