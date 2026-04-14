@@ -15,7 +15,7 @@ const useAudioPlayer = ({
       setIsAudioPlaying(newValue);
       onIsAudioPlayingUpdate(newValue);
     },
-    [onIsAudioPlayingUpdate]
+    [onIsAudioPlayingUpdate],
   );
 
   const cleanUp = useCallback(() => {
@@ -35,7 +35,13 @@ const useAudioPlayer = ({
       base64Text: string;
     }) => {
       const audioContext = new AudioContext({ sampleRate });
-      const audioBuffer = await audioContext.decodePCMInBase64Data(base64Text);
+      //const audioBuffer = await audioContext.decodePCMInBase64Data(base64Text);
+
+      const audioBuffer = await audioContext.decodePCMInBase64(
+        base64Text,
+        sampleRate,
+        1,
+      );
 
       const audioBufferSourceNode = audioContext.createBufferSource();
       audioBufferSourceNode.connect(audioContext.destination);
@@ -50,7 +56,7 @@ const useAudioPlayer = ({
       audioBufferSourceNodeRef.current = audioBufferSourceNode;
       audioContextRef.current = audioContext;
     },
-    [cleanUp, updateIsAudioPlaying]
+    [cleanUp, updateIsAudioPlaying],
   );
   const stopPlayingAudio = useCallback(() => {
     audioBufferSourceNodeRef.current?.stop?.();

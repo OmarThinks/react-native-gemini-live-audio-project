@@ -43,7 +43,7 @@ const New = () => {
         base64Text: base64String,
       });
     },
-    [playAudio]
+    [playAudio],
   );
 
   const onUsageReport = useCallback((usage: object) => {
@@ -56,7 +56,7 @@ const New = () => {
       //stopStreaming();
       stopPlayingAudio();
     },
-    [stopPlayingAudio]
+    [stopPlayingAudio],
   );
 
   const onReadyToReceiveAudio = useCallback(() => {
@@ -99,12 +99,12 @@ const New = () => {
         !isAudioPlayingRef.current
       ) {
         console.log(
-          `Sending AUdio Chunk. isWebSocketConnected: ${isWebSocketConnected}, isInitialized: ${isInitialized}, isAiResponseInProgress: ${isAiResponseInProgressRef.current}, isAudioPlayingRef.current: ${isAudioPlayingRef.current}, ${chunk.slice(0, 50) + "..."}`
+          `Sending AUdio Chunk. isWebSocketConnected: ${isWebSocketConnected}, isInitialized: ${isInitialized}, isAiResponseInProgress: ${isAiResponseInProgressRef.current}, isAudioPlayingRef.current: ${isAudioPlayingRef.current}, ${chunk.slice(0, 50) + "..."}`,
         );
         sendBase64AudioStringChunk(chunk);
       }
     },
-    [isInitialized, isWebSocketConnected, sendBase64AudioStringChunk]
+    [isInitialized, isWebSocketConnected, sendBase64AudioStringChunk],
   );
 
   const { isStreaming, startStreaming, stopStreaming } = useAudioStreamer({
@@ -250,7 +250,7 @@ const useAudioPlayer = ({
       setIsAudioPlaying(newValue);
       onIsAudioPlayingUpdate(newValue);
     },
-    [onIsAudioPlayingUpdate]
+    [onIsAudioPlayingUpdate],
   );
 
   const cleanUp = useCallback(() => {
@@ -270,7 +270,14 @@ const useAudioPlayer = ({
       base64Text: string;
     }) => {
       const audioContext = new AudioContext({ sampleRate });
-      const audioBuffer = await audioContext.decodePCMInBase64Data(base64Text);
+
+      const audioBuffer = await audioContext.decodePCMInBase64(
+        base64Text,
+        sampleRate,
+        1,
+      );
+
+      //const audioBuffer = await audioContext.decodePCMInBase64Data(base64Text);
 
       const audioBufferSourceNode = audioContext.createBufferSource();
       audioBufferSourceNode.connect(audioContext.destination);
@@ -285,7 +292,7 @@ const useAudioPlayer = ({
       audioBufferSourceNodeRef.current = audioBufferSourceNode;
       audioContextRef.current = audioContext;
     },
-    [cleanUp, updateIsAudioPlaying]
+    [cleanUp, updateIsAudioPlaying],
   );
   const stopPlayingAudio = useCallback(() => {
     audioBufferSourceNodeRef.current?.stop?.();
