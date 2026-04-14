@@ -71,16 +71,16 @@ export default function TabTwoScreen() {
         onPress={async () => {
           const audioContext = new AudioContext({ sampleRate: 24000 });
 
+          /*
           const audioBuffer = await audioContext.decodePCMInBase64(
             dummyAudioChunks[7],
             24000,
             1,
-          );
+          );*/
 
-          /*
           const audioBuffer = await audioContext.decodePCMInBase64Data(
             dummyAudioChunks[7],
-          );*/
+          );
           enqueueAudioBufferQueue(audioBuffer);
 
           playAudio();

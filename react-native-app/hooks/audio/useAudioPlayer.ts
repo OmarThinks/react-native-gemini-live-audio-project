@@ -35,13 +35,14 @@ const useAudioPlayer = ({
       base64Text: string;
     }) => {
       const audioContext = new AudioContext({ sampleRate });
-      //const audioBuffer = await audioContext.decodePCMInBase64Data(base64Text);
+      const audioBuffer = await audioContext.decodePCMInBase64Data(base64Text);
 
+      /*
       const audioBuffer = await audioContext.decodePCMInBase64(
         base64Text,
         sampleRate,
         1,
-      );
+      );*/
 
       const audioBufferSourceNode = audioContext.createBufferSource();
       audioBufferSourceNode.connect(audioContext.destination);
